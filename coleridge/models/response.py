@@ -7,10 +7,18 @@ from pydantic import BaseModel
 T = TypeVar("T", bound=BaseModel)
 
 
-class Response(BaseModel, Generic[T]):
+class ResultModel(BaseModel, Generic[T]):
     """Response model"""
 
-    data: Union[T, List[T], None] = None
-    error: Union[Exception, None]
+    result: Union[T, List[T], None] = None
     started: Union[datetime, None] = None
     completed: Union[datetime, None] = None
+    error: Union[Exception, None] = None
+
+    class Config:  # pylint: disable=too-few-public-methods
+        """Pydantic config"""
+
+        arbitrary_types_allowed = True
+
+
+__all__ = ("ResultModel",)
