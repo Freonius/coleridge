@@ -17,7 +17,7 @@ from typing import (
 )
 from time import sleep
 from uuid import uuid4
-from pickle import dumps, loads
+from pickle import dumps, loads  # nosec B403
 from json import loads as json_loads
 from threading import Thread
 from yaml import load, SafeLoader
@@ -34,9 +34,9 @@ U = TypeVar("U", bound=BaseModel)
 
 
 class RabbitBackgroundFunction(Generic[T, U]):
-    """ """
+    """Background function using RabbitMQ"""
 
-    _data: Dict[str, ResultModel]
+    _data: Dict[str, ResultModel[U]]
     _input_type: Type[T]
     _output_type: Type[U]
     _on_finish: Callable[[Union[U, List[U]]], None]
@@ -47,7 +47,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
     _client: BlockingConnection
     _channel: BlockingChannel
 
-    def __init__(
+    def __init__(  # noqa: C901, PLR0912, PLR0915
         self,
         func: Callable[[Union[T, List[T]]], Union[U, List[U]]],
         input_type: Type[T],
@@ -55,7 +55,21 @@ class RabbitBackgroundFunction(Generic[T, U]):
         connection_settings: Union[Connection, None, str, Path] = None,
         queue: Union[str, None] = None,
     ) -> None:
-        """ """
+        """
+        Initializes a new instance of the RabbitBackgroundFunction class.
+
+        Args:
+            func (Callable[[Union[T, List[T]]], Union[U, List[U]]]): The function to be \
+                executed in the background.
+            input_type (Type[T]): The type of the input data.
+            output_type (Type[U]): The type of the output data.
+            connection_settings (Union[Connection, None, str, Path], optional): The connection \
+                settings for the RabbitMQ server. Defaults to None.
+            queue (Union[str, None], optional): The name of the queue to use. Defaults to None.
+
+        Returns:
+            None
+        """
         _host: str
         if connection_settings is None:
             connection_settings = Connection()
@@ -63,9 +77,18 @@ class RabbitBackgroundFunction(Generic[T, U]):
             connection_settings = Path(connection_settings)
         if isinstance(connection_settings, Path):
             if not connection_settings.exists():
-                raise Exception(f"File {connection_settings} does not exist")
+                raise FileNotFoundError(f"File {connection_settings} does not exist")
             with open(connection_settings, "r", encoding="utf-8") as _f:
                 _settings = load(_f, Loader=SafeLoader)
+                if not isinstance(_settings, dict):
+                    raise TypeError(f"{_settings} is not a dict")
+                _settings = cast(Dict[str, Any], _settings)
+                if "rabbit" not in _settings:
+                    raise ValueError(f"{_settings} does not contain 'rabbit'")
+                _settings = cast(Dict[str, Any], _settings["rabbit"])
+                if not isinstance(_settings, dict):
+                    raise TypeError(f"{_settings} is not a dict")
+                _settings = cast(Dict[str, Any], _settings)
                 connection_settings = Connection.model_validate(_settings)
 
         _host = connection_settings.host
@@ -117,29 +140,36 @@ class RabbitBackgroundFunction(Generic[T, U]):
 
     @property
     def on_finish(self) -> Callable[[Union[U, List[U]]], None]:
+        """Get a function to be called when the function is finished with a result"""
         return self._on_finish
 
     @on_finish.setter
     def on_finish(self, value: Callable[[Union[U, List[U]]], None]) -> None:
+        """Set a function to be called when the function is finished with a result"""
         self._on_finish = value
 
     @property
     def on_error(self) -> Callable[[Exception], None]:
+        """Get a function to be called when the function raises an exception"""
         return self._on_error
 
     @on_error.setter
     def on_error(self, value: Callable[[Exception], None]) -> None:
+        """Set a function to be called when the function raises an exception"""
         self._on_error = value
 
     @property
     def on_finish_signal(self) -> Callable[[], None]:
+        """Get a function to be called when a message is received"""
         return self._on_finish_signal
 
     @on_finish_signal.setter
     def on_finish_signal(self, value: Callable[[], None]) -> None:
+        """Set a function to be called when a message is received"""
         self._on_finish_signal = value
 
     def run(self, what: Union[T, List[T], str]) -> Result[U]:
+        """Send a message to the queue"""
         uuid = str(uuid4())
         self._data[uuid] = ResultModel(started=datetime.now())
 
@@ -150,20 +180,21 @@ class RabbitBackgroundFunction(Generic[T, U]):
 
         def _background_task(
             func: Callable[[Union[T, List[T], str]], Union[U, List[U]]],
-        ):
+        ) -> None:
+            """Listen for messages in a separate thread"""
             self._listen(uuid, func)
             self._start()
 
         _th: Thread = Thread(
             target=_background_task,
-            args=(cast("Callable[[Union[T, List[T]]], Union[U, List[U]]]", self.func),),
+            args=(self.func,),
             daemon=True,
         )
         _th.start()
 
         res: Result[U] = Result(
             uuid,
-            self,  # type: ignore[arg-type]
+            self,
             self._on_finish,
             self._on_error,
             self._on_finish_signal,
@@ -176,11 +207,13 @@ class RabbitBackgroundFunction(Generic[T, U]):
         uuid: str,
         callback: Callable[[Union[T, List[T], str]], Union[U, List[U]]],
     ) -> None:
-        """ """
+        """Listen for messages in a separate thread"""
         self._channel.queue_declare(queue=self._queue)
 
         # pylint: disable=unused-argument,invalid-name
         def _internal_callback(a: Any, b: Any, c: Any, bingpot: AnyStr) -> None:
+            """Listen for messages in a separate thread"""
+            # pylint: disable=unused-argument
             try:
                 if isinstance(bingpot, bytes):
                     bingpot = loads(bingpot)
@@ -194,7 +227,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
                 if isinstance(bingpot, dict):
                     bingpot = self._input_type.model_validate(bingpot)
                 self._data[uuid].result = callback(cast("Union[T, List[T]]", bingpot))
-            except Exception as ex:
+            except Exception as ex:  # pylint: disable=broad-except
                 self._data[uuid].error = ex
             finally:
                 self._data[uuid].completed = datetime.now()
@@ -225,14 +258,13 @@ class RabbitBackgroundFunction(Generic[T, U]):
         self._channel.queue_delete(self._queue)
 
     def close(self) -> None:
-        """Close the connection and deletes the queue. (This function is called
-        when used in the `with` context.)
-        """
+        """Close the connection and deletes the queue."""
         self.stop()
         self.delete_queue()
         self._client.close()
 
     def _is_connected(self) -> bool:
+        """Check if the connection is open."""
         return bool(self._client.is_open)
 
     @property
@@ -255,16 +287,24 @@ class RabbitBackgroundFunction(Generic[T, U]):
 
     @property
     def is_connected(self) -> bool:
-        """
-        Property indicating whether the client is connected to the database.
-        """
+        """Check if the connection is open."""
         return self._is_connected()
 
-    def __getitem__(self, key: str) -> ResultModel:
+    def __getitem__(self, key: str) -> ResultModel[U]:
+        """Get the result."""
         return self._data[key]
 
-    def __setitem__(self, key: str, value: ResultModel) -> None:
+    def __setitem__(self, key: str, value: ResultModel[U]) -> None:
+        """Set the result."""
         self._data[key] = value
 
     def __delitem__(self, key: str) -> None:
+        """Delete the result."""
         del self._data[key]
+
+
+__all__ = (
+    "RabbitBackgroundFunction",
+    "T",
+    "U",
+)

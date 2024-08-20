@@ -1,0 +1,40 @@
+# https://taskfile.dev
+
+version: '3'
+
+silent: true
+
+tasks:
+  lint:
+    desc: Run linters (ruff, mypy, interrogate, bandit)
+    cmds:
+      - python -m ruff check coleridge
+      - python -m mypy coleridge
+      - python -m interrogate
+      - python -m bandit -c pyproject.toml -r coleridge
+
+  test:
+    desc: Run tests
+    cmds:
+      - python -m pytest
+      - |
+        if [[ -f ./coverage.svg ]]; then
+            rm ./coverage.svg
+        fi
+      - poetry run coverage-badge -o coverage.svg
+      # Open the coverage page
+      - { task: open_page, vars: { PAGE: 'coverage/report' } }
+
+  docs:
+    desc: Generate documentation and open the page
+    cmds:
+      - python -m pdoc ./coleridge/ -d google -o docs
+      - { task: open_page, vars: { PAGE: 'docs' } }
+
+  open_page:
+    internal: true
+    cmds:
+      - cmd: python -c "from webbrowser import open as open_browser; from pathlib import Path; open_browser(Path('./{{ .PAGE }}/index.html').absolute().as_uri())"
+        ignore_error: true
+    vars:
+      PAGE: '{{ .PAGE }}'
