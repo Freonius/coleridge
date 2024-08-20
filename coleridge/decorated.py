@@ -22,7 +22,7 @@ class DecoratedBackgroundFunction(Generic[T, U]):
 
     def __init__(
         self,
-        func: Callable[[Union[T, List[T]]], U],
+        func: Callable[[Union[T, List[T]]], Union[U, List[U]]],
         input_type: Type[T],
         output_type: Type[U],
     ) -> None:

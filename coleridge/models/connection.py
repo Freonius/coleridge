@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class Connection(BaseModel):
     """Connection model"""
 
-    name: str
+    # name: str
     host: str = "127.0.0.1"
     port: int = 5672
     username: Union[str, None] = None
