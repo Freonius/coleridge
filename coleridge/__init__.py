@@ -5,6 +5,7 @@ from .coleridge import Coleridge
 from .decorator import ColeridgeDecorator
 from .decorated import DecoratedBackgroundFunction
 from .rabbit import RabbitBackgroundFunction
+from .cronfun import CronDecorator
 
 __all__ = (
     "Coleridge",
@@ -15,4 +16,5 @@ __all__ = (
     "Empty",
     "ResultModel",
     "Value",
+    "CronDecorator",
 )

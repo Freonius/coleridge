@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "coleridge"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Fred Pirani <freonius@gmail.com>"]
 license = "MIT"
@@ -11,6 +11,7 @@ python = ">=3.9,<4.0"
 pika = "^1.3.2"
 pyyaml = "^6.0.2"
 pydantic = "^2.8.2"
+croniter = "^3.0.3"
 
 
 [tool.poetry.group.dev.dependencies]
