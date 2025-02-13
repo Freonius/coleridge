@@ -8,9 +8,7 @@ T = TypeVar("T", bound=BaseModel)
 U = TypeVar("U", bound=BaseModel)
 
 
-def get_params_type(
-    func: Callable[[Union[T, List[T]]], Union[U, List[U]]]
-) -> Tuple[Type[T], Type[U]]:
+def get_params_type(func: Callable[[T], U]) -> Tuple[Type[T], Type[U]]:
     """Get the types of the parameters and return values of a function."""
     sig = signature(func)
     key = list(sig.parameters.keys())[0]

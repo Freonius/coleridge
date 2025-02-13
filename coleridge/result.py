@@ -18,7 +18,7 @@ class ExecutionResult(Generic[U]):
     """Execution result"""
 
     _dec: "Union[DecoratedBackgroundFunction[Any, U], RabbitBackgroundFunction[Any, U]]"
-    _on_finish: "Callable[[Union[U, List[U]]], None]"
+    _on_finish: "Callable[[U], None]"
     _on_error: Callable[[Exception], None]
     _on_finish_signal: "Callable[[], None]"
     _started_thread: bool
@@ -27,7 +27,7 @@ class ExecutionResult(Generic[U]):
         self,
         uuid: str,
         dec: "Union[DecoratedBackgroundFunction[T, U], RabbitBackgroundFunction[T, U]]",
-        on_finish: "Callable[[Union[U, List[U]]], None]",
+        on_finish: "Callable[[U], None]",
         on_error: Callable[[Exception], None],
         on_finish_signal: "Callable[[], None]",
     ) -> None:
@@ -46,7 +46,7 @@ class ExecutionResult(Generic[U]):
         return self._uuid
 
     @property
-    def result(self) -> Union[U, List[U], None]:
+    def result(self) -> Union[U, None]:
         """The result of the execution"""
         return self._dec[self.uuid].result
 

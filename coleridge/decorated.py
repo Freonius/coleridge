@@ -19,14 +19,14 @@ class DecoratedBackgroundFunction(Generic[T, U]):
     _data: Dict[str, ResultModel[U]]
     _input_type: Type[T]
     _output_type: Type[U]
-    _on_finish: Callable[[Union[U, List[U]]], None]
+    _on_finish: Callable[[U], None]
     _on_error: Callable[[Exception], None]
     _on_finish_signal: Callable[[], None]
-    func: Callable[[Union[T, List[T]]], Union[U, List[U]]]
+    func: Callable[[T], U]
 
     def __init__(
         self,
-        func: Callable[[Union[T, List[T]]], Union[U, List[U]]],
+        func: Callable[[T], U],
         input_type: Type[T],
         output_type: Type[U],
     ) -> None:
@@ -52,12 +52,12 @@ class DecoratedBackgroundFunction(Generic[T, U]):
         self._on_finish_signal = lambda: None
 
     @property
-    def on_finish(self) -> Callable[[Union[U, List[U]]], None]:
+    def on_finish(self) -> Callable[[U], None]:
         """Get a function to be called when the function is finished with a result"""
         return self._on_finish
 
     @on_finish.setter
-    def on_finish(self, value: Callable[[Union[U, List[U]]], None]) -> None:
+    def on_finish(self, value: Callable[[U], None]) -> None:
         """Set a function to be called when the function is finished with a result"""
         self._on_finish = value
 
@@ -83,7 +83,7 @@ class DecoratedBackgroundFunction(Generic[T, U]):
 
     def _run_background(
         self,
-        input_value: Union[T, List[T], str],
+        input_value: T,
         uuid: str,
     ) -> None:
         """
@@ -98,18 +98,7 @@ class DecoratedBackgroundFunction(Generic[T, U]):
             None
         """
         try:
-            if isinstance(input_value, str):
-                input_value = loads(input_value)
-            if isinstance(input_value, list):
-                input_value = [
-                    self._input_type.model_validate(i) if isinstance(i, dict) else i
-                    for i in input_value
-                ]
-            if isinstance(input_value, dict):
-                # pylint: disable=line-too-long
-                input_value = self._input_type.model_validate(input_value)  # type: ignore[unreachable]
-                # pylint: enable=line-too-long
-            self._data[uuid].result = self.func(cast("Union[T, List[T]]", input_value))
+            self._data[uuid].result = self.func(input_value)
         except Exception as ex:  # pylint: disable=broad-except
             self._data[uuid].error = ex
         finally:

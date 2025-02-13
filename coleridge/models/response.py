@@ -10,7 +10,7 @@ T = TypeVar("T", bound=BaseModel)
 class ResultModel(BaseModel, Generic[T]):
     """Response model"""
 
-    result: Union[T, List[T], None] = None
+    result: Union[T, None] = None
     started: Union[datetime, None] = None
     completed: Union[datetime, None] = None
     error: Union[Exception, None] = None

@@ -16,7 +16,7 @@ class ColeridgeDecorator(Generic[T, U]):
 
     _input_type: Type[T]
     _output_type: Type[U]
-    _on_finish: Union[Callable[[Union[U, List[U]]], None], None]
+    _on_finish: Union[Callable[[U], None], None]
     _on_error: Union[Callable[[Exception], None], None]
     _on_finish_signal: Union[Callable[[], None], None]
     _mode: Literal["rabbit", "background"]
@@ -31,7 +31,7 @@ class ColeridgeDecorator(Generic[T, U]):
         mode: Literal["rabbit", "background"] = "background",
         connection_settings: Union[Connection, None, str, Path] = None,
         queue: Union[str, None] = None,
-        on_finish: Union[Callable[[Union[U, List[U]]], None], None] = None,
+        on_finish: Union[Callable[[U], None], None] = None,
         on_error: Union[Callable[[Exception], None], None] = None,
         on_finish_signal: Union[Callable[[], None], None] = None,
     ) -> None:
@@ -68,7 +68,7 @@ class ColeridgeDecorator(Generic[T, U]):
 
     def __call__(
         self,
-        func: Callable[[Union[T, List[T]]], Union[U, List[U]]],
+        func: Callable[[T], U],
     ) -> Union[DecoratedBackgroundFunction[T, U], RabbitBackgroundFunction[T, U]]:
         """
         Calls the decorated function with the provided parameters.

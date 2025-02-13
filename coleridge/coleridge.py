@@ -45,11 +45,11 @@ class Coleridge:
     def magic_decorator(
         self,
         queue: Union[str, None] = None,
-        on_finish: Union[Callable[[Union[U, List[U]]], None], None] = None,
+        on_finish: Union[Callable[[U], None], None] = None,
         on_error: Union[Callable[[Exception], None], None] = None,
         on_finish_signal: Union[Callable[[], None], None] = None,
     ) -> Callable[
-        [Callable[[Union[T, List[T]]], Union[U, List[U]]]],
+        [Callable[[T], U]],
         Union[DecoratedBackgroundFunction[T, U], RabbitBackgroundFunction[T, U]],
     ]:
         """
@@ -73,7 +73,7 @@ class Coleridge:
         """
 
         def _inner(
-            func: Callable[[Union[T, List[T]]], Union[U, List[U]]]
+            func: Callable[[T], U]
         ) -> Union[DecoratedBackgroundFunction[T, U], RabbitBackgroundFunction[T, U]]:
             """
             Inner function of the magic decorator, responsible for creating a \

@@ -39,17 +39,17 @@ class RabbitBackgroundFunction(Generic[T, U]):
     _data: Dict[str, ResultModel[U]]
     _input_type: Type[T]
     _output_type: Type[U]
-    _on_finish: Callable[[Union[U, List[U]]], None]
+    _on_finish: Callable[[U], None]
     _on_error: Callable[[Exception], None]
     _on_finish_signal: Callable[[], None]
-    func: Callable[[Union[T, List[T]]], Union[U, List[U]]]
+    func: Callable[[T], U]
     _queue: str
     _client: BlockingConnection
     _channel: BlockingChannel
 
     def __init__(  # noqa: C901, PLR0912, PLR0915
         self,
-        func: Callable[[Union[T, List[T]]], Union[U, List[U]]],
+        func: Callable[[T], U],
         input_type: Type[T],
         output_type: Type[U],
         connection_settings: Union[Connection, None, str, Path] = None,
@@ -139,12 +139,12 @@ class RabbitBackgroundFunction(Generic[T, U]):
         self._on_finish_signal = lambda: None
 
     @property
-    def on_finish(self) -> Callable[[Union[U, List[U]]], None]:
+    def on_finish(self) -> Callable[[U], None]:
         """Get a function to be called when the function is finished with a result"""
         return self._on_finish
 
     @on_finish.setter
-    def on_finish(self, value: Callable[[Union[U, List[U]]], None]) -> None:
+    def on_finish(self, value: Callable[[U], None]) -> None:
         """Set a function to be called when the function is finished with a result"""
         self._on_finish = value
 
@@ -168,7 +168,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
         """Set a function to be called when a message is received"""
         self._on_finish_signal = value
 
-    def run(self, what: Union[T, List[T], str]) -> Result[U]:
+    def run(self, what: T) -> Result[U]:
         """Send a message to the queue"""
         uuid = str(uuid4())
         self._data[uuid] = ResultModel(started=datetime.now())
@@ -179,7 +179,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
         )
 
         def _background_task(
-            func: Callable[[Union[T, List[T], str]], Union[U, List[U]]],
+            func: Callable[[T], U],
         ) -> None:
             """Listen for messages in a separate thread"""
             self._listen(uuid, func)
@@ -205,7 +205,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
     def _listen(
         self,
         uuid: str,
-        callback: Callable[[Union[T, List[T], str]], Union[U, List[U]]],
+        callback: Callable[[T], U],
     ) -> None:
         """Listen for messages in a separate thread"""
         self._channel.queue_declare(queue=self._queue)
@@ -218,15 +218,10 @@ class RabbitBackgroundFunction(Generic[T, U]):
                 if isinstance(bingpot, bytes):
                     bingpot = loads(bingpot)
                 if isinstance(bingpot, str):
-                    bingpot = json_loads(bingpot)
-                if isinstance(bingpot, list):
-                    bingpot = [
-                        self._input_type.model_validate(i) if isinstance(i, dict) else i
-                        for i in bingpot
-                    ]
+                    bingpot = self._input_type.model_validate_json(bingpot)  # type: ignore
                 if isinstance(bingpot, dict):
                     bingpot = self._input_type.model_validate(bingpot)
-                self._data[uuid].result = callback(cast("Union[T, List[T]]", bingpot))
+                self._data[uuid].result = callback(cast("T", bingpot))
             except Exception as ex:  # pylint: disable=broad-except
                 self._data[uuid].error = ex
             finally:
