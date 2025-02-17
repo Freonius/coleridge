@@ -17,7 +17,7 @@ class ColeridgeDecorator(Generic[T, U]):
     _input_type: Type[T]
     _output_type: Type[U]
     _on_finish: Union[Callable[[U], None], None]
-    _on_error: Union[Callable[[Exception], None], None]
+    _on_error: Union[Callable[[T, Exception], None], None]
     _on_finish_signal: Union[Callable[[], None], None]
     _mode: Literal["rabbit", "background"]
     _connection_settings: Union[Connection, None, str, Path]
@@ -32,7 +32,7 @@ class ColeridgeDecorator(Generic[T, U]):
         connection_settings: Union[Connection, None, str, Path] = None,
         queue: Union[str, None] = None,
         on_finish: Union[Callable[[U], None], None] = None,
-        on_error: Union[Callable[[Exception], None], None] = None,
+        on_error: Union[Callable[[T, Exception], None], None] = None,
         on_finish_signal: Union[Callable[[], None], None] = None,
     ) -> None:
         """
@@ -48,7 +48,7 @@ class ColeridgeDecorator(Generic[T, U]):
             queue (Union[str, None], optional): The queue name. Defaults to None.
             on_finish (Union[Callable[[Union[U, List[U]]], None], None], optional): The \
                 callback function to call when the task is finished. Defaults to None.
-            on_error (Union[Callable[[Exception], None], None], optional): The callback \
+            on_error (Union[Callable[[T, Exception], None], None], optional): The callback \
               function to call when an error occurs. Defaults to None.
             on_finish_signal (Union[Callable[[], None], None], optional): The callback \
             function to call when the task is finished with a signal. Defaults to None.

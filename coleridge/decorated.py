@@ -3,8 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 from threading import Thread
-from json import loads
-from typing import TypeVar, Generic, Callable, Union, List, Dict, Type, cast
+from typing import TypeVar, Generic, Callable, Union, Dict, Type
 from pydantic import BaseModel
 from .models.response import ResultModel
 from .result import ExecutionResult as Result
@@ -20,7 +19,7 @@ class DecoratedBackgroundFunction(Generic[T, U]):
     _input_type: Type[T]
     _output_type: Type[U]
     _on_finish: Callable[[U], None]
-    _on_error: Callable[[Exception], None]
+    _on_error: Callable[[T, Exception], None]
     _on_finish_signal: Callable[[], None]
     func: Callable[[T], U]
 
@@ -48,7 +47,7 @@ class DecoratedBackgroundFunction(Generic[T, U]):
         self._output_type = output_type
 
         self._on_finish = lambda x: None
-        self._on_error = lambda x: None
+        self._on_error = lambda _, x: None
         self._on_finish_signal = lambda: None
 
     @property
@@ -62,12 +61,12 @@ class DecoratedBackgroundFunction(Generic[T, U]):
         self._on_finish = value
 
     @property
-    def on_error(self) -> Callable[[Exception], None]:
+    def on_error(self) -> Callable[[T, Exception], None]:
         """Get a function to be called when the function raises an exception"""
         return self._on_error
 
     @on_error.setter
-    def on_error(self, value: Callable[[Exception], None]) -> None:
+    def on_error(self, value: Callable[[T, Exception], None]) -> None:
         """Set a function to be called when the function raises an exception"""
         self._on_error = value
 
@@ -106,9 +105,9 @@ class DecoratedBackgroundFunction(Generic[T, U]):
 
     def run(  # noqa: D102
         self,
-        input_value: Union[T, List[T], str],
+        input_value: T,
         timeout: Union[float, None] = None,  # pylint: disable=unused-argument
-    ) -> Result[U]:
+    ) -> Result[T, U]:
         """
         Run a background task with the given input value and optional timeout.
 
@@ -124,12 +123,13 @@ class DecoratedBackgroundFunction(Generic[T, U]):
 
         t = Thread(target=self._run_background, args=(input_value, uuid))
         t.start()
-        res: Result[U] = Result(
+        res: Result[T, U] = Result(
             uuid,
             self,
             self._on_finish,
             self._on_error,
             self._on_finish_signal,
+            input_value,
         )
         res.connect()
         return res

@@ -14,22 +14,24 @@ if TYPE_CHECKING:  # pragma: no cover
     from .rabbit import RabbitBackgroundFunction
 
 
-class ExecutionResult(Generic[U]):
+class ExecutionResult(Generic[T, U]):
     """Execution result"""
 
     _dec: "Union[DecoratedBackgroundFunction[Any, U], RabbitBackgroundFunction[Any, U]]"
     _on_finish: "Callable[[U], None]"
-    _on_error: Callable[[Exception], None]
+    _on_error: Callable[[T, Exception], None]
     _on_finish_signal: "Callable[[], None]"
     _started_thread: bool
+    _input_data: T
 
     def __init__(  # noqa: D107 # pylint: disable=too-many-arguments
         self,
         uuid: str,
         dec: "Union[DecoratedBackgroundFunction[T, U], RabbitBackgroundFunction[T, U]]",
         on_finish: "Callable[[U], None]",
-        on_error: Callable[[Exception], None],
+        on_error: Callable[[T, Exception], None],
         on_finish_signal: "Callable[[], None]",
+        input_data: T,
     ) -> None:
         self._uuid = uuid
         self._dec = dec
@@ -37,6 +39,7 @@ class ExecutionResult(Generic[U]):
         self._on_error = on_error
         self._on_finish_signal = on_finish_signal
         self._started_thread = False
+        self._input_data = input_data
 
     _uuid: str
 
@@ -101,12 +104,12 @@ class ExecutionResult(Generic[U]):
         # TODO: timeout
         while True:
             if self.error is not None:
-                self._on_error(self.error)
+                self._on_error(self._input_data, self.error)
                 return
             if self.finished:
                 data = self.result
                 if data is None:
-                    self._on_error(ValueError("Result is None"))
+                    self._on_error(self._input_data, ValueError("Result is None"))
                     return
                 self._on_finish(data)
                 self._on_finish_signal()

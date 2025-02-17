@@ -46,7 +46,7 @@ class Coleridge:
         self,
         queue: Union[str, None] = None,
         on_finish: Union[Callable[[U], None], None] = None,
-        on_error: Union[Callable[[Exception], None], None] = None,
+        on_error: Union[Callable[[T, Exception], None], None] = None,
         on_finish_signal: Union[Callable[[], None], None] = None,
     ) -> Callable[
         [Callable[[T], U]],
@@ -60,7 +60,7 @@ class Coleridge:
         queue (Union[str, None]): The queue to be used for the decorated function.
         on_finish (Union[Callable[[Union[U, List[U]]], None], None]): The callback \
         function to be executed when the decorated function finishes.
-        on_error (Union[Callable[[Exception], None], None]): The callback function to be \
+        on_error (Union[Callable[[T, Exception], None], None]): The callback function to be \
             executed when the decorated function encounters an error.
         on_finish_signal (Union[Callable[[], None], None]): The callback function to be \
         executed when the decorated function finishes with a signal.

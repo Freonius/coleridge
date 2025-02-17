@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "coleridge"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
 authors = ["Fred Pirani <freonius@gmail.com>"]
 license = "MIT"

@@ -5,7 +5,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import (
     AnyStr,
-    List,
     Union,
     Any,
     Callable,
@@ -18,7 +17,6 @@ from typing import (
 from time import sleep
 from uuid import uuid4
 from pickle import dumps, loads  # nosec B403
-from json import loads as json_loads
 from threading import Thread
 from yaml import load, SafeLoader
 from pika import BlockingConnection, ConnectionParameters, PlainCredentials
@@ -40,7 +38,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
     _input_type: Type[T]
     _output_type: Type[U]
     _on_finish: Callable[[U], None]
-    _on_error: Callable[[Exception], None]
+    _on_error: Callable[[T, Exception], None]
     _on_finish_signal: Callable[[], None]
     func: Callable[[T], U]
     _queue: str
@@ -135,7 +133,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
         self._output_type = output_type
 
         self._on_finish = lambda x: None
-        self._on_error = lambda x: None
+        self._on_error = lambda x, y: None
         self._on_finish_signal = lambda: None
 
     @property
@@ -149,12 +147,12 @@ class RabbitBackgroundFunction(Generic[T, U]):
         self._on_finish = value
 
     @property
-    def on_error(self) -> Callable[[Exception], None]:
+    def on_error(self) -> Callable[[T, Exception], None]:
         """Get a function to be called when the function raises an exception"""
         return self._on_error
 
     @on_error.setter
-    def on_error(self, value: Callable[[Exception], None]) -> None:
+    def on_error(self, value: Callable[[T, Exception], None]) -> None:
         """Set a function to be called when the function raises an exception"""
         self._on_error = value
 
@@ -168,7 +166,7 @@ class RabbitBackgroundFunction(Generic[T, U]):
         """Set a function to be called when a message is received"""
         self._on_finish_signal = value
 
-    def run(self, what: T) -> Result[U]:
+    def run(self, what: T) -> Result[T, U]:
         """Send a message to the queue"""
         uuid = str(uuid4())
         self._data[uuid] = ResultModel(started=datetime.now())
@@ -192,12 +190,13 @@ class RabbitBackgroundFunction(Generic[T, U]):
         )
         _th.start()
 
-        res: Result[U] = Result(
+        res: Result[T, U] = Result(
             uuid,
             self,
             self._on_finish,
             self._on_error,
             self._on_finish_signal,
+            what,
         )
         res.connect()
         return res
